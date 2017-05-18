@@ -27,6 +27,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.verify;
@@ -63,12 +65,23 @@ public class AddEditTaskPresenterTest {
     }
 
     @Test
+    public void createPresenter_setsThePresenterToView(){
+        // Get a reference to the class under test
+        mAddEditTaskPresenter = new AddEditTaskPresenter(
+                null, mTasksRepository, mAddEditTaskView, true);
+
+        // Then the presenter is set to the view
+        verify(mAddEditTaskView).setPresenter(mAddEditTaskPresenter);
+    }
+
+    @Test
     public void saveNewTaskToRepository_showsSuccessMessageUi() {
         // Get a reference to the class under test
-        mAddEditTaskPresenter = new AddEditTaskPresenter("1", mTasksRepository, mAddEditTaskView);
+        mAddEditTaskPresenter = new AddEditTaskPresenter(
+                null, mTasksRepository, mAddEditTaskView, true);
 
         // When the presenter is asked to save a task
-        mAddEditTaskPresenter.createTask("New Task Title", "Some Task Description");
+        mAddEditTaskPresenter.saveTask("New Task Title", "Some Task Description");
 
         // Then a task is saved in the repository and the view updated
         verify(mTasksRepository).saveTask(any(Task.class)); // saved to the model
@@ -78,10 +91,11 @@ public class AddEditTaskPresenterTest {
     @Test
     public void saveTask_emptyTaskShowsErrorUi() {
         // Get a reference to the class under test
-        mAddEditTaskPresenter = new AddEditTaskPresenter(null, mTasksRepository, mAddEditTaskView);
+        mAddEditTaskPresenter = new AddEditTaskPresenter(
+                null, mTasksRepository, mAddEditTaskView, true);
 
         // When the presenter is asked to save an empty task
-        mAddEditTaskPresenter.createTask("", "");
+        mAddEditTaskPresenter.saveTask("", "");
 
         // Then an empty not error is shown in the UI
         verify(mAddEditTaskView).showEmptyTaskError();
@@ -90,10 +104,11 @@ public class AddEditTaskPresenterTest {
     @Test
     public void saveExistingTaskToRepository_showsSuccessMessageUi() {
         // Get a reference to the class under test
-        mAddEditTaskPresenter = new AddEditTaskPresenter("1", mTasksRepository, mAddEditTaskView);
+        mAddEditTaskPresenter = new AddEditTaskPresenter(
+                "1", mTasksRepository, mAddEditTaskView, true);
 
         // When the presenter is asked to save an existing task
-        mAddEditTaskPresenter.updateTask("New Task Title", "Some Task Description");
+        mAddEditTaskPresenter.saveTask("Existing Task Title", "Some Task Description");
 
         // Then a task is saved in the repository and the view updated
         verify(mTasksRepository).saveTask(any(Task.class)); // saved to the model
@@ -105,18 +120,20 @@ public class AddEditTaskPresenterTest {
         Task testTask = new Task("TITLE", "DESCRIPTION");
         // Get a reference to the class under test
         mAddEditTaskPresenter = new AddEditTaskPresenter(testTask.getId(),
-                mTasksRepository, mAddEditTaskView);
+                mTasksRepository, mAddEditTaskView, true);
 
         // When the presenter is asked to populate an existing task
         mAddEditTaskPresenter.populateTask();
 
         // Then the task repository is queried and the view updated
         verify(mTasksRepository).getTask(eq(testTask.getId()), mGetTaskCallbackCaptor.capture());
+        assertThat(mAddEditTaskPresenter.isDataMissing(), is(true));
 
         // Simulate callback
         mGetTaskCallbackCaptor.getValue().onTaskLoaded(testTask);
 
         verify(mAddEditTaskView).setTitle(testTask.getTitle());
         verify(mAddEditTaskView).setDescription(testTask.getDescription());
+        assertThat(mAddEditTaskPresenter.isDataMissing(), is(false));
     }
 }

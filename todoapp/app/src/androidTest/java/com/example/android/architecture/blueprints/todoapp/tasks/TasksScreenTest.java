@@ -16,6 +16,27 @@
 
 package com.example.android.architecture.blueprints.todoapp.tasks;
 
+import android.support.test.InstrumentationRegistry;
+import android.support.test.filters.SdkSuppress;
+import android.support.test.rule.ActivityTestRule;
+import android.support.test.runner.AndroidJUnit4;
+import android.support.test.filters.LargeTest;
+import android.text.TextUtils;
+import android.view.View;
+import android.widget.ListView;
+
+import com.example.android.architecture.blueprints.todoapp.Injection;
+import com.example.android.architecture.blueprints.todoapp.R;
+import com.example.android.architecture.blueprints.todoapp.TestUtils;
+import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource;
+
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import static android.support.test.InstrumentationRegistry.getTargetContext;
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.Espresso.openActionBarOverflowOrOptionsMenu;
@@ -33,31 +54,10 @@ import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static android.support.test.espresso.matcher.ViewMatchers.withText;
-
+import static com.example.android.architecture.blueprints.todoapp.TestUtils.getCurrentActivity;
 import static com.google.common.base.Preconditions.checkArgument;
-
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.core.IsNot.not;
-
-import android.support.test.InstrumentationRegistry;
-import android.support.test.rule.ActivityTestRule;
-import android.support.test.runner.AndroidJUnit4;
-import android.test.suitebuilder.annotation.LargeTest;
-import android.text.TextUtils;
-import android.view.View;
-import android.widget.ListView;
-
-import com.example.android.architecture.blueprints.todoapp.Injection;
-import com.example.android.architecture.blueprints.todoapp.R;
-import com.example.android.architecture.blueprints.todoapp.TestUtils;
-import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource;
-
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.hamcrest.TypeSafeMatcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 /**
  * Tests for the tasks screen, the main screen which contains a list of all tasks.
@@ -316,7 +316,7 @@ public class TasksScreenTest {
         onView(withId(R.id.task_detail_complete)).perform(click());
 
         // Click on the navigation up button to go back to the list
-        onView(withContentDescription("Navigate up")).perform(click());
+        onView(withContentDescription(getToolbarNavigationContentDescription())).perform(click());
 
         // Check that the task is marked as completed
         onView(allOf(withId(R.id.complete),
@@ -338,7 +338,7 @@ public class TasksScreenTest {
         onView(withId(R.id.task_detail_complete)).perform(click());
 
         // Click on the navigation up button to go back to the list
-        onView(withContentDescription("Navigate up")).perform(click());
+        onView(withContentDescription(getToolbarNavigationContentDescription())).perform(click());
 
         // Check that the task is marked as active
         onView(allOf(withId(R.id.complete),
@@ -362,7 +362,7 @@ public class TasksScreenTest {
         onView(withId(R.id.task_detail_complete)).perform(click());
 
         // Click on the navigation up button to go back to the list
-        onView(withContentDescription("Navigate up")).perform(click());
+        onView(withContentDescription(getToolbarNavigationContentDescription())).perform(click());
 
         // Check that the task is marked as active
         onView(allOf(withId(R.id.complete),
@@ -387,7 +387,7 @@ public class TasksScreenTest {
         onView(withId(R.id.task_detail_complete)).perform(click());
 
         // Click on the navigation up button to go back to the list
-        onView(withContentDescription("Navigate up")).perform(click());
+        onView(withContentDescription(getToolbarNavigationContentDescription())).perform(click());
 
         // Check that the task is marked as active
         onView(allOf(withId(R.id.complete),
@@ -408,7 +408,7 @@ public class TasksScreenTest {
         onView(withText(TITLE1)).check(matches(not(isDisplayed())));
 
         // when rotating the screen
-        TestUtils.rotateOrientation(mTasksActivityTestRule);
+        TestUtils.rotateOrientation(mTasksActivityTestRule.getActivity());
 
         // then nothing changes
         onView(withText(TITLE1)).check(doesNotExist());
@@ -428,11 +428,65 @@ public class TasksScreenTest {
         onView(withText(TITLE1)).check(matches(isDisplayed()));
 
         // when rotating the screen
-        TestUtils.rotateOrientation(mTasksActivityTestRule);
+        TestUtils.rotateOrientation(mTasksActivityTestRule.getActivity());
 
         // then nothing changes
         onView(withText(TITLE1)).check(matches(isDisplayed()));
         onView(withText(R.string.label_completed)).check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 21) // Blinking cursor after rotation breaks this in API 19
+    public void orientationChange_DuringEdit_ChangePersists() throws Throwable {
+        // Add a completed task
+        createTask(TITLE1, DESCRIPTION);
+
+        // Open the task in details view
+        onView(withText(TITLE1)).perform(click());
+
+        // Click on the edit task button
+        onView(withId(R.id.fab_edit_task)).perform(click());
+
+        // Change task title (but don't save)
+        onView(withId(R.id.add_task_title))
+                .perform(replaceText(TITLE2), closeSoftKeyboard()); // Type new task title
+
+        // Rotate the screen
+        TestUtils.rotateOrientation(getCurrentActivity());
+
+        // Verify task title is restored
+        onView(withId(R.id.add_task_title)).check(matches(withText(TITLE2)));
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 21) // Blinking cursor after rotation breaks this in API 19
+    public void orientationChange_DuringEdit_NoDuplicate() throws IllegalStateException {
+        // Add a completed task
+        createTask(TITLE1, DESCRIPTION);
+
+        // Open the task in details view
+        onView(withText(TITLE1)).perform(click());
+
+        // Click on the edit task button
+        onView(withId(R.id.fab_edit_task)).perform(click());
+
+        // Rotate the screen
+        TestUtils.rotateOrientation(getCurrentActivity());
+
+        // Edit task title and description
+        onView(withId(R.id.add_task_title))
+                .perform(replaceText(TITLE2), closeSoftKeyboard()); // Type new task title
+        onView(withId(R.id.add_task_description)).perform(replaceText(DESCRIPTION),
+                closeSoftKeyboard()); // Type new task description and close the keyboard
+
+        // Save the task
+        onView(withId(R.id.fab_edit_task_done)).perform(click());
+
+        // Verify task is displayed on screen in the task list.
+        onView(withItemText(TITLE2)).check(matches(isDisplayed()));
+
+        // Verify previous task is not displayed
+        onView(withItemText(TITLE1)).check(doesNotExist());
     }
 
     private void viewAllTasks() {
@@ -470,5 +524,10 @@ public class TasksScreenTest {
 
     private String getText(int stringId) {
         return mTasksActivityTestRule.getActivity().getResources().getString(stringId);
+    }
+
+    private String getToolbarNavigationContentDescription() {
+        return TestUtils.getToolbarNavigationContentDescription(
+                mTasksActivityTestRule.getActivity(), R.id.toolbar);
     }
 }

@@ -20,7 +20,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
-import android.test.suitebuilder.annotation.LargeTest;
+import android.support.test.filters.LargeTest;
 
 import com.example.android.architecture.blueprints.todoapp.R;
 import com.example.android.architecture.blueprints.todoapp.TestUtils;
@@ -133,7 +133,7 @@ public class TaskDetailScreenTest {
         // Check delete menu item is displayed and is unique
         onView(withId(R.id.menu_delete)).check(matches(isDisplayed()));
 
-        TestUtils.rotateOrientation(mTaskDetailActivityTestRule);
+        TestUtils.rotateOrientation(mTaskDetailActivityTestRule.getActivity());
 
         // Check that the task is shown
         onView(withId(R.id.task_detail_title)).check(matches(withText(TASK_TITLE)));
